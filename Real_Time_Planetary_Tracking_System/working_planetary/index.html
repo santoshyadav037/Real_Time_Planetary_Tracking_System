@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Celestial Tracking</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script type="text/javascript">
+        
+    let Azi_Stepper_angle, Alt_Stepper_angle;
+
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition);
+      } 
+    }
+    function showPosition(position) {
+        let latitudes, longitudes, altitudes;
+        latitudes = position.coords.latitude;
+        longitudes = position.coords.longitude;
+        altitudes = position.coords.altitude;
+
+        document.getElementById('latitude').value = latitudes;
+        document.getElementById('longitude').value = longitudes;
+        document.getElementById('altitude').value = altitudes || 0;
+        console.log("Latitude: " + latitudes + " Longitude: " + longitudes+ " Altitude: " + altitudes);
+        (error) => alert("Error getting location: " + error.message),
+        { enableHighAccuracy: true }
+    }
+
+         document.addEventListener('DOMContentLoaded', function() {
+            // Connect to the Socket.IO server with explicit URL
+            const socket = io('http://localhost:5000'); // Specify the correct host and port
+            const dataDisplay = document.getElementById('data');
+            
+            // When connected to the server
+            socket.on('connect', function() {
+                console.log('Connected to server');
+                document.getElementById('status').textContent = 'Connected';
+            });
+            
+            // When disconnected from the server
+            socket.on('disconnect', function() {
+                console.log('Disconnected from server');
+                document.getElementById('status').textContent = 'Disconnected';
+            });
+            
+            // When receiving updated angles
+            socket.on('angles_update', function(data) {
+                console.log('Received data:', data);
+                Azi_Stepper_angle = data.azimuth;
+                Alt_Stepper_angle = data.altitude;
+                command=data.body;
+                sendCommanded(command, Azi_Stepper_angle,Alt_Stepper_angle);
+                dataDisplay.innerHTML = `
+                    <p><strong>Altitude:</strong> ${data.altitude}°</p>
+                    <p><strong>Azimuth:</strong> ${data.azimuth}°</p>
+                    <p><strong>Last Updated:</strong> ${new Date().toLocaleTimeString()}</p>
+                `;
+            });
+            
+            // Request data for a specific celestial body
+            document.getElementById('requestForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const body = document.getElementById('bodyInput').value;
+                socket.emit('request_data', { body: body });
+            });
+
+            document.getElementById("observerData").addEventListener("submit", function (event) {
+            event.preventDefault(); // Prevent form from reloading the page
+
+            const data = {
+                latitude: document.getElementById("latitude").value,
+                longitude: document.getElementById("longitude").value,
+                altitude: document.getElementById("altitude").value
+            };
+
+            socket.emit("observer_data", data); // Send data to Python server
+            console.log("Data sent:", data);
+        });
+
+        // Listen for server response
+        socket.on("response", (msg) => {
+            document.getElementById("response").innerHTML=msg;
+        });
+
+     });
+
+     var socket; 
+      function connectWebSocket1() {
+          // Use the current host or a hardcoded IP if needed
+          var wsUrl = "ws://192.168.1.168:81/";
+          // Change to your ESP32's IP or use window.location.hostname
+          socket = new WebSocket(wsUrl);
+          socket.onopen = function() {
+              console.log("Connected!");
+              document.getElementById("status1").textContent = "Connected";
+              document.getElementById("status1").style.color = "green";
+          };
+          socket.onclose = function() {
+              document.getElementById("status1").textContent = "Disconnected";
+              document.getElementById("status1").style.color = "red";
+              // Try to reconnect after a delay
+              setTimeout(connectWebSocket1, 3000);
+          };
+          
+          socket.onerror = function(error) {
+              console.error("WebSocket Error:", error);
+          };
+      }
+
+      function sendCommanded(command,az, alt) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            console.log(az, alt);
+            // const message = Alt_Stepper_angle+","+Azi_Stepper_angle;
+            if(az == 'undefined' && alt == 'undefined') {
+                console.log(az, alt);
+                socket.send(command);
+            }else{
+            const message = command+","+az+ "," + alt;
+            socket.send(message);
+            console.log("Sent: " + message);
+              }
+            } else {
+                alert("WebSocket not connected! Trying to reconnect...");
+                connectWebSocket1();
+            }
+        }
+     window.onload = connectWebSocket1;
+    </script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        #data { background-color: #f4f4f4; padding: 15px; border-radius: 5px; }
+        #status { display: inline-block; padding: 5px 10px; border-radius: 3px; }
+        .connected { background-color: #dff0d8; color: #3c763d; }
+        .disconnected { background-color: #f2dede; color: #a94442; }
+        div{
+            margin: 10px;
+            padding: 5px;
+        }
+        input{
+            padding: 5px;
+            font-size: large;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mannual Control the Mount</h1>
+    <a href="http://127.0.0.1:5500/Real_Time_Planetary_Tracking_System/ArduinoCode/motorcontrol.html"><button>Mannual Section</button></a>
+    <h1>Celestial Body Tracking</h1>
+    <p>Python Server Connection status: <span id="status">Disconnected</span></p>
+    <p>ESP32 Connection status: <span id="status1">Disconnected</span></p>
+    <div>
+        <form action="" method="" id="observerData">
+        <h2>If the observer data is not accurate ,Please Enter the observer location Manually:</h2>
+        <button onclick="getLocation()">GetObserver Location</button>
+        <div></div><div>
+        <label for="latitude">Latitude</label>
+        <input type="text" name="latitude" id="latitude" value="" required>
+        </div>
+        <div>
+        <label for="longitude">Longitude :</label>
+        <input type="text" name="longitude" id="longitude" value="" required>
+        </div>
+        <div>
+        <label for="altitude">Altitude :</label>
+        <input type="text" name="altitude" id="altitude" value="" required>
+        </div>
+        <button type="submit">Submit</button>
+        </form>
+    </div>
+    <div><p id="response"></p></div>
+    <h1>Enter the Name of the Celestial Body which you want to track</h1>
+    <form id="requestForm">
+        <label for="bodyInput">Celestial Body:</label>
+        <input type="text" id="bodyInput" value="Sun">
+        <button type="submit">Get Data</button>
+    </form>
+    
+    <h2>Current Data</h2>
+    <div id="data">
+        <p>Waiting for data...</p>
+    </div>
+
+    <button onclick="sendCommanded('reset')">Reset</button>
+    <button onclick="sendCommanded('startTracking')">StartTracking</button>
+    <button onclick="sendCommanded('stopTracking')">StopTracking</button>
+    
+</body>
+</html>

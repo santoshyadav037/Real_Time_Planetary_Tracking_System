@@ -1,0 +1,218 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 WebSocket Motor Control</title>
+    <script>
+        var socket = new WebSocket("ws://192.168.1.94:81/"); // 🔹 Change to your ESP32 IP
+
+        socket.onopen = function() {
+            console.log("WebSocket Connected!");
+        };
+
+        socket.onmessage = function(event) {
+            console.log("Received: " + event.data);
+        };
+
+        socket.onerror = function(error) {
+            console.error("WebSocket Error:", error);
+        };
+
+        function sendCommand(command) {
+            if (socket.readyState === WebSocket.OPEN) {
+                if (command == 'forward' || command == 'backward') {
+                // For movement commands, send command with values
+                const value1 = document.getElementById('value1').value;
+                const value2 = document.getElementById('value2').value;
+                socket.send(`${command},${value1},${value2}`);
+                console.log(`Sent: ${command},${value1},${value2}`);
+            } else {
+                // For other commands, just send the command
+                socket.send(command);
+                console.log(`Sent: ${command}`);
+            }
+            } else {
+                console.log("WebSocket not connected!");
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>ESP32 WebSocket Motor Control</h1>
+    <h1>Stepper Motor Control</h1>
+    <label>Value 1:</label>
+    <input type="number" id="value1" step="0.01"><br>
+    <label>Value 2:</label>
+    <input type="number" id="value2" step="0.01"><br>
+    <button onclick="sendCommand('forward')">Forward</button>
+    <button onclick="sendCommand('backward')">Backward</button>
+    <button onclick="sendCommand('stop')">Stop</button>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 WebSocket Motor Control</title>
+    <script>
+        // Connect to WebSocket - change this IP to your ESP32's IP or use window.location.hostname
+        var socket;
+      
+        
+        function connectWebSocket() {
+            // Use the current host or a hardcoded IP if needed
+            var wsUrl = "ws://192.168.1.168:81/";
+            // Change to your ESP32's IP or use window.location.hostname
+            socket = new WebSocket(wsUrl);
+         
+            socket.onopen = function() {
+                console.log("Connected!");
+                document.getElementById("status").textContent = "Connected";
+                document.getElementById("status").style.color = "green";
+            };
+
+        //     function MinMax2(el) {
+        //     if (el.value != "") {
+        //         if (parseFloat(el.value) < parseFloat(el.min)) {
+        //             document.getElementById('range1').innerHTML="Value must be in range 0 to 90 !!!";
+        //             el.value = el.min;
+        //         }
+        //         if (parseFloat(el.value) > parseFloat(el.max)) {
+        //             el.value = el.max;
+        //             document.getElementById('range1').innerHTML="Value must be in range 0 to 90 !!!";
+        //         }
+        //     }
+        // }
+        //     function MinMax1(el) {
+        //     if (el.value != "") {
+        //         if (parseFloat(el.value) < parseFloat(el.min)) {
+        //             document.getElementById('range2').innerHTML="Value must be in range 0 to 360 !!!";
+        //             el.value = el.min;
+        //         }
+        //         if (parseFloat(el.value) > parseFloat(el.max)) {
+        //             el.value = el.max;
+        //             document.getElementById('range2').innerHTML="Value must be in range 0 to 360 !!!";
+        //         }
+        //     }
+        // }
+
+            socket.onclose = function() {
+                document.getElementById("status").textContent = "Disconnected";
+                document.getElementById("status").style.color = "red";
+                // Try to reconnect after a delay
+                setTimeout(connectWebSocket, 3000);
+            };
+            
+            socket.onerror = function(error) {
+                console.error("WebSocket Error:", error);
+            };
+        }
+        
+         function sendCommand(command) {
+            if (socket && socket.readyState === WebSocket.OPEN) { 
+                if(command == "Azi_forward" || command == "Azi_backward") {          
+                    var value1 = document.getElementById("azi_stepper").value || "0";
+                    var value2=0;
+                    var message = command + "," + value1 +","+value2;
+                    socket.send(message);
+                    console.log("Sent: " + message);
+                }else if(command == "Azi_step1+"){
+                    var value1 =1;
+                    var value2=0;
+                    var message = "Azi_forward" +","+ value1+","+value2 ;
+                    socket.send(message);
+                } else if(command =="Azi_step1-"){
+                    var value1 =1;
+                    var value2=0;
+                    var message = "Azi_backward" +","+ value1+","+value2;
+                    socket.send(message);
+                } else  if(command == "Alt_forward" || command == "Alt_backward") {          
+                    var value1 = 0;
+                    var value2 = document.getElementById("alt_stepper").value || "0";
+                    var message = command + "," + value1 +","+value2;
+                    socket.send(message);
+                    console.log("Sent: " + message);
+                }else if(command == "Alt_step1+"){
+                    var value1 =0;
+                    var value2=1;
+                    var message = "Alt_forward" +","+value1+","+value2;
+                    socket.send(message);
+                } else if(command =="Alt_step1-"){
+                    var value1 =0;
+                    var value2=1;
+                    var message = "Alt_backward" +","+ 1+","+value2;
+                    socket.send(message);
+                }
+            } else {
+                alert("WebSocket not connected! Trying to reconnect...");
+                connectWebSocket();
+            }
+        }
+
+      
+           
+        window.onload = connectWebSocket;
+       
+    </script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .control-panel { margin-top: 20px; }
+        button { padding: 10px 20px; margin: 5px; }
+        input { padding: 5px; margin: 5px; width: 80px; }
+    </style>
+</head>
+<body>
+    <h1>ESP32 Stepper Motor Control</h1>
+    <p>Connection Status: <span id="status">Connecting...</span> <button onclick="connectWebSocket()">Connect</button></p>
+    <!-- <p>Connection Status: <span id="status1">Connecting...</span></p> -->
+    
+    <div class="control-panel">
+        <div>
+            <label>Azi_Stepper_angle :</label>
+            <input type="number" id="azi_stepper" value="0" step="0.00001" min="0" max="360">
+            <!-- <p id="range1"></p> -->
+            <button onclick="sendCommand('Azi_forward')">Forward</button>
+            <button onclick="sendCommand('Azi_backward')">Backward</button>
+            <button onclick="sendCommand('Azi_step1+')">Step++</button>
+            <button onclick="sendCommand('Azi_step1-')">Step--</button>
+        </div>
+        <div>
+            <label>Alt_Stepper_angle :</label>
+            <input type="number" id="alt_stepper" value="0" step="0.00001" min="0" max="90" >
+            <!-- <p id="range2"></p> -->
+            <button onclick="sendCommand('Alt_forward')">Forward</button>
+            <button onclick="sendCommand('Alt_backward')">Backward</button>
+            <button onclick="sendCommand('Alt_step1+')">Step++</button>
+            <button onclick="sendCommand('Alt_step1-')">Step--</button>
+        </div>
+    </div>
+    <button>
+    <a href="http://127.0.0.1:5500/Real_Time_Planetary_Tracking_System/index.html" style="text-decoration: none; font-size: large;">Back to Automatic</a>
+    </button>
+    <!-- <div>
+        <button onclick ="sendsmgs('its workings')">Checking python server</button>
+        <p id = "serverresponse"></p>
+
+    </div> -->
+    <!-- <button onclick="sendsmgs('sun')">
+    <div style="height:100px; width:100px; background-color: aquamarine; margin:10px">Sun</div>
+    </button>
+    <button onclick="sendsmgs('moon')">
+        <div style="height:100px; width:100px; background-color: aquamarine; margin:10px">Moon</div>
+    </button>
+    <button onclick="sendsmgs('mars')">
+        <div style="height:100px; width:100px; background-color: aquamarine; margin:10px">Mars</div>
+    </button>
+    <button onclick="sendsmgs('mercury')" >
+        <div style="height:100px; width:100px; background-color: aquamarine; margin:10px">mercury</div>
+    </button>
+    <button onclick="sendsmgs('venus')">
+        <div style="height:100px; width:100px; background-color: aquamarine; margin:10px">venus</div>
+    </button>
+    <button onclick="sendsmgs('jupiter')">
+        <div style="height:100px; width:100px; background-color: aquamarine; margin:10px">jupiter</div>
+    </button>
+    <button onclick="sendsmgs('saturn')">
+        <div style="height:100px; width:100px; background-color: aquamarine; margin:10px">saturn</div>
+    </button> -->
+</body>
+</html>
